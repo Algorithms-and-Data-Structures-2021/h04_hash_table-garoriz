@@ -18,26 +18,61 @@ namespace itis {
     }
 
     // Tip: allocate hash-table buckets
+    buckets_.resize(capacity);
   }
 
   std::optional<std::string> HashTable::Search(int key) const {
     // Tip: compute hash code (index) and use linear search
+    int index = hash(key);
+    for (std::pair<int, std::string> x : buckets_[index]) {
+      if (x.first == key) {
+        return x.second;
+      }
+    }
     return std::nullopt;
   }
 
   void HashTable::Put(int key, const std::string &value) {
     // Tip 1: compute hash code (index) to determine which bucket to use
     // Tip 2: consider the case when the key exists (read the docs in the header file)
+    int index = hash(key);
+    for (auto iter = buckets_[index].begin(); iter != buckets_[index].end(); iter++) {
+      if (iter->first == key) {
+        iter->second = value;
+        return;
+      }
+    }
+    buckets_[index].push_back(std::pair(key, value));
+    num_keys_++;
 
     if (static_cast<double>(num_keys_) / buckets_.size() >= load_factor_) {
       // Tip 3: recompute hash codes (indices) for key-value pairs (create a new hash-table)
       // Tip 4: use utils::hash(key, size) to compute new indices for key-value pairs
+      std::vector<Bucket> buckets_temp = std::vector<Bucket>{};
+      buckets_temp.resize(buckets_.size() * kGrowthCoefficient);
+      for (int i = 0; i < buckets_.size(); ++i) {
+        while (!buckets_[i].empty()) {
+          auto iter = buckets_[i].begin();
+          int hash_index = utils::hash(iter->first, buckets_temp.size());
+          buckets_temp[hash_index].push_back(std::pair(iter->first, iter->second));
+          buckets_[i].remove(std::pair(iter->first, iter->second));
+        }
+      }
+      buckets_ = buckets_temp;
     }
   }
 
   std::optional<std::string> HashTable::Remove(int key) {
     // Tip 1: compute hash code (index) to determine which bucket to use
     // TIp 2: find the key-value pair to remove and make a copy of value to return
+    int index = hash(key);
+    for (auto iter = buckets_[index].begin(); iter != buckets_[index].end(); iter++) {
+      if (iter->first == key) {
+        std::string value = iter->second;
+        buckets_[index].remove(std::pair<int, std::string>(key, value));
+        return value;
+      }
+    }
     return std::nullopt;
   }
 
